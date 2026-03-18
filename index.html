@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Финансы</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f2f2f7; color: #1c1c1e; min-height: 100vh; display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; }
+.header { background: #fff; padding: 12px 18px 10px; border-bottom: 0.5px solid #e0e0e5; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 20; }
+.hdr-title { font-size: 16px; font-weight: 600; }
+.hdr-month-nav { display: flex; align-items: center; gap: 4px; }
+.hdr-arr { background: none; border: none; color: #007aff; font-size: 22px; cursor: pointer; padding: 0 4px; line-height: 1; }
+.hdr-month-btn { background: none; border: none; cursor: pointer; font-family: inherit; display: flex; flex-direction: column; align-items: center; padding: 2px 6px; border-radius: 8px; transition: background 0.15s; }
+.hdr-month-btn:hover { background: #f2f2f7; }
+.hdr-month-main { font-size: 14px; font-weight: 600; color: #1c1c1e; white-space: nowrap; }
+.hdr-month-sub { font-size: 10px; color: #8e8e93; margin-top: 1px; }
+.burger-btn { background: none; border: none; cursor: pointer; padding: 4px; display: flex; flex-direction: column; gap: 4px; }
+.burger-line { width: 20px; height: 2px; background: #3c3c43; border-radius: 2px; }
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 40; }
+.sidebar-overlay.open { display: block; }
+.sidebar { position: fixed; left: -260px; top: 0; bottom: 0; width: 260px; background: #fff; z-index: 50; transition: left 0.25s ease; box-shadow: 2px 0 16px rgba(0,0,0,0.12); display: flex; flex-direction: column; }
+.sidebar.open { left: 0; }
+.sidebar-header { padding: 20px 18px 14px; border-bottom: 0.5px solid #e5e5ea; }
+.sidebar-title { font-size: 17px; font-weight: 600; }
+.sidebar-sub { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+.sidebar-menu { padding: 10px 0; }
+.sidebar-item { display: flex; align-items: center; gap: 12px; padding: 13px 18px; cursor: pointer; border: none; background: none; width: 100%; font-family: inherit; text-align: left; transition: background 0.12s; }
+.sidebar-item:hover { background: #f5f5fa; }
+.sidebar-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.sidebar-item-text { font-size: 15px; font-weight: 500; }
+.sidebar-item-desc { font-size: 12px; color: #8e8e93; margin-top: 1px; }
+.cal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 55; align-items: flex-end; justify-content: center; }
+.cal-overlay.open { display: flex; }
+.cal-sheet { background: #fff; border-radius: 20px 20px 0 0; padding: 0 0 24px; width: 100%; max-width: 430px; }
+.cal-handle { width: 36px; height: 4px; background: #d1d1d6; border-radius: 2px; margin: 12px auto 0; }
+.cal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px; }
+.cal-header-title { font-size: 16px; font-weight: 600; }
+.cal-close { background: none; border: none; font-size: 20px; color: #8e8e93; cursor: pointer; }
+.cal-modes { display: flex; gap: 6px; padding: 0 16px 12px; }
+.cal-mode-btn { flex: 1; background: #f2f2f7; border: none; border-radius: 10px; padding: 8px 4px; font-size: 12px; font-weight: 500; color: #8e8e93; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.cal-mode-btn.active { background: #007aff; color: #fff; }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 10px; }
+.cal-nav-title { font-size: 15px; font-weight: 600; color: #1c1c1e; }
+.cal-nav-arr { background: none; border: none; color: #007aff; font-size: 20px; cursor: pointer; padding: 2px 6px; }
+.cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); padding: 0 12px; margin-bottom: 4px; }
+.cal-wd { text-align: center; font-size: 11px; color: #8e8e93; padding: 4px 0; font-weight: 500; }
+.cal-days { display: grid; grid-template-columns: repeat(7,1fr); padding: 0 12px; gap: 2px; }
+.cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 50%; cursor: pointer; transition: all 0.1s; color: #1c1c1e; border: none; background: none; font-family: inherit; }
+.cal-day:active { background: #f0f0f5; }
+.cal-day.today { color: #007aff; font-weight: 700; }
+.cal-day.selected { background: #007aff; color: #fff; font-weight: 600; }
+.cal-day.in-range { background: #e0eeff; color: #1c1c1e; border-radius: 0; }
+.cal-day.range-start { background: #007aff; color: #fff; border-radius: 50% 0 0 50%; }
+.cal-day.range-end { background: #007aff; color: #fff; border-radius: 0 50% 50% 0; }
+.cal-day.range-start.range-end { border-radius: 50%; }
+.cal-day.other-month { color: #c7c7cc; }
+.cal-months { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; padding: 0 16px 8px; }
+.cal-month-item { background: #f2f2f7; border: none; border-radius: 12px; padding: 12px 8px; font-size: 13px; font-weight: 500; color: #1c1c1e; cursor: pointer; font-family: inherit; transition: all 0.15s; text-align: center; }
+.cal-month-item.selected { background: #007aff; color: #fff; }
+.cal-years { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; padding: 0 16px 8px; max-height: 200px; overflow-y: auto; }
+.cal-year-item { background: #f2f2f7; border: none; border-radius: 10px; padding: 10px 4px; font-size: 13px; font-weight: 500; color: #1c1c1e; cursor: pointer; font-family: inherit; transition: all 0.15s; text-align: center; }
+.cal-year-item.selected { background: #007aff; color: #fff; }
+.cal-period-info { margin: 0 16px 10px; background: #f2f2f7; border-radius: 12px; padding: 10px 14px; font-size: 13px; color: #8e8e93; min-height: 40px; display: flex; align-items: center; }
+.cal-period-info span { color: #007aff; font-weight: 500; }
+.cal-apply { margin: 0 16px; width: calc(100% - 32px); background: #007aff; color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; padding: 13px; cursor: pointer; font-family: inherit; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 60; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 20px 20px 0 0; padding: 20px 18px 32px; width: 100%; max-width: 430px; }
+.modal-handle { width: 36px; height: 4px; background: #d1d1d6; border-radius: 2px; margin: 0 auto 16px; }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+.modal-sub { font-size: 13px; color: #8e8e93; margin-bottom: 18px; }
+.period-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.period-opt { display: flex; align-items: center; gap: 12px; background: #f2f2f7; border: 1.5px solid transparent; border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: all 0.15s; }
+.period-opt.selected { background: #e5eeff; border-color: #007aff; }
+.period-opt-icon { font-size: 20px; }
+.period-opt-label { font-size: 14px; font-weight: 500; }
+.period-opt-desc { font-size: 11px; color: #8e8e93; margin-top: 1px; }
+.period-custom { display: none; gap: 8px; margin-bottom: 18px; }
+.period-custom.visible { display: flex; }
+.date-inp { flex: 1; background: #f2f2f7; border: 0.5px solid #d1d1d6; border-radius: 10px; color: #1c1c1e; font-size: 13px; padding: 9px 12px; outline: none; font-family: inherit; }
+.date-inp:focus { border-color: #007aff; }
+.date-sep { align-self: center; color: #8e8e93; font-size: 13px; }
+.modal-btns { display: flex; gap: 8px; }
+.modal-btn { flex: 1; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; padding: 13px; cursor: pointer; font-family: inherit; }
+.modal-btn.cancel { background: #f2f2f7; color: #3c3c43; }
+.modal-btn.export { background: #007aff; color: #fff; }
+.toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1c1c1e; color: #fff; font-size: 13px; padding: 10px 18px; border-radius: 20px; opacity: 0; transition: all 0.3s; z-index: 100; white-space: nowrap; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.tabs { display: flex; background: #fff; border-bottom: 0.5px solid #e0e0e5; padding: 0 12px; }
+.tab-btn { flex: 1; background: none; border: none; border-bottom: 2px solid transparent; color: #8e8e93; font-size: 12px; font-family: inherit; padding: 9px 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: all 0.15s; }
+.tab-btn span { font-size: 16px; }
+.tab-btn.active { color: #007aff; border-bottom-color: #007aff; }
+.page { display: none; flex: 1; flex-direction: column; }
+.page.active { display: flex; }
+.balance-strip { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 10px 12px 8px; background: #fff; border-bottom: 0.5px solid #e0e0e5; }
+.bal-c { background: #f2f2f7; border-radius: 10px; padding: 7px 8px; text-align: center; }
+.bl { font-size: 9px; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.bv { font-size: 13px; font-weight: 600; }
+.bv.inc { color: #34c759; } .bv.exp { color: #ff3b30; } .bv.bal { color: #007aff; }
+.numpad-section { display: flex; flex-direction: column; padding: 10px 12px 6px; background: #fff; border-bottom: 0.5px solid #e0e0e5; }
+.amount-display { background: #f2f2f7; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.amount-main { font-size: 36px; font-weight: 300; letter-spacing: -1px; color: #1c1c1e; flex: 1; min-width: 0; }
+.placeholder-txt { color: #c7c7cc; font-size: 22px; font-weight: 400; }
+.amount-type-toggle { display: flex; gap: 5px; flex-shrink: 0; }
+.type-pill { background: #e5e5ea; border: none; border-radius: 20px; padding: 6px 13px; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; color: #8e8e93; transition: all 0.15s; }
+.type-pill.exp.active { background: #ffe5e3; color: #ff3b30; }
+.type-pill.inc.active { background: #e3f9e8; color: #34c759; }
+.cat-dropdown-wrap { position: relative; margin-bottom: 10px; }
+.cat-trigger { width: 100%; background: #f2f2f7; border: 0.5px solid #d1d1d6; border-radius: 10px; padding: 10px 13px; font-size: 14px; font-family: inherit; color: #1c1c1e; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: border-color 0.15s; }
+.cat-trigger.open { border-color: #007aff; background: #fff; border-radius: 10px 10px 0 0; }
+.cat-arrow { font-size: 11px; color: #8e8e93; transition: transform 0.2s; }
+.cat-dropdown { display: none; position: absolute; left: 0; right: 0; top: 100%; background: #fff; border: 0.5px solid #007aff; border-top: none; border-radius: 0 0 10px 10px; z-index: 30; max-height: 220px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.cat-dropdown.open { display: block; }
+.cat-opt { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; font-size: 14px; cursor: pointer; border-bottom: 0.5px solid #f2f2f7; }
+.cat-opt:last-child { border-bottom: none; }
+.cat-opt:active { background: #f5f5fa; }
+.cat-opt.selected { color: #007aff; font-weight: 500; }
+.cat-opt-right { display: flex; align-items: center; gap: 6px; }
+.cat-opt-check { color: #007aff; font-size: 14px; }
+.cat-del-btn { background: none; border: none; color: #ff3b30; font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 6px; line-height: 1; }
+.cat-del-btn.confirming { background: #ff3b30; color: #fff; font-size: 11px; padding: 3px 7px; }
+.cat-add-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 0.5px solid #e5e5ea; background: #fafafa; }
+.cat-add-inp { flex: 1; background: #f2f2f7; border: 0.5px solid #d1d1d6; border-radius: 8px; color: #1c1c1e; font-size: 13px; padding: 7px 10px; outline: none; font-family: inherit; }
+.cat-add-inp:focus { border-color: #007aff; background: #fff; }
+.cat-add-btn { background: #007aff; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; font-family: inherit; }
+.desc-row { margin-bottom: 10px; }
+.desc-inp { width: 100%; background: #f2f2f7; border: 0.5px solid #d1d1d6; border-radius: 10px; color: #1c1c1e; font-size: 14px; padding: 10px 13px; outline: none; font-family: inherit; }
+.desc-inp::placeholder { color: #c7c7cc; }
+.desc-inp:focus { border-color: #007aff; background: #fff; }
+.numpad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.np-btn { background: #f2f2f7; border: none; border-radius: 14px; color: #1c1c1e; font-size: 28px; font-weight: 400; padding: 0; height: 64px; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.07); -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; outline: none; }
+.np-btn:active { background: #dcdce0; }
+.np-btn.del-btn { font-size: 22px; color: #8e8e93; }
+.np-btn.add-btn { grid-row: span 2; background: #007aff; color: #fff; font-size: 13px; font-weight: 600; flex-direction: column; gap: 4px; box-shadow: 0 2px 8px rgba(0,122,255,0.3); }
+.np-btn.add-btn .add-icon { font-size: 24px; line-height: 1; }
+.np-btn.add-btn:active { background: #0062cc; }
+.recent-wrap { padding: 0 12px 16px; flex: 1; overflow-y: auto; }
+.sec-title { font-size: 11px; font-weight: 600; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.6px; margin: 14px 0 8px; }
+.tx-list { display: flex; flex-direction: column; gap: 6px; }
+.tx-item { background: #fff; border-radius: 12px; padding: 11px 13px; display: flex; align-items: center; gap: 10px; cursor: pointer; border: 0.5px solid #e5e5ea; }
+.tx-item:active { background: #f2f2f7; }
+.tx-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.tx-info { flex: 1; min-width: 0; }
+.tx-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx-meta { font-size: 11px; color: #8e8e93; margin-top: 2px; }
+.tx-amt { font-size: 14px; font-weight: 600; flex-shrink: 0; }
+.tx-amt.income { color: #34c759; } .tx-amt.expense { color: #ff3b30; }
+.edit-panel { display: none; background: #f9f9fb; border: 0.5px solid #e5e5ea; border-radius: 10px; padding: 10px; margin-top: 6px; }
+.edit-panel.visible { display: block; }
+.ep-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+.ep-inp { background: #fff; border: 0.5px solid #d1d1d6; border-radius: 8px; color: #1c1c1e; font-size: 12px; padding: 8px 10px; outline: none; font-family: inherit; width: 100%; }
+.ep-inp:focus { border-color: #007aff; }
+.ep-save { width: 100%; background: #007aff; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; padding: 9px; cursor: pointer; font-family: inherit; margin-bottom: 5px; }
+.ep-del { background: #fff5f5; color: #ff3b30; border: 0.5px solid rgba(255,59,48,0.25); margin-bottom: 0; }
+.ep-del.confirm { background: #ff3b30; color: #fff; }
+.all-wrap { padding: 12px; flex: 1; overflow-y: auto; }
+.stats-wrap { padding: 12px; flex: 1; overflow-y: auto; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.stat-card { background: #fff; border-radius: 12px; padding: 13px 14px; border: 0.5px solid #e5e5ea; }
+.stat-lbl { font-size: 10px; color: #8e8e93; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-val { font-size: 18px; font-weight: 600; }
+.chart-wrap { background: #fff; border-radius: 12px; padding: 14px; border: 0.5px solid #e5e5ea; }
+.bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.bar-row:last-child { margin-bottom: 0; }
+.bar-cat { font-size: 11px; color: #3c3c43; width: 70px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-bg { flex: 1; background: #f2f2f7; border-radius: 4px; height: 7px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+.bar-amt { font-size: 11px; color: #8e8e93; width: 52px; text-align: right; flex-shrink: 0; }
+.empty { text-align: center; color: #c7c7cc; font-size: 13px; padding: 28px 0; }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header"><div class="sidebar-title">💰 Финансы</div><div class="sidebar-sub">Управление и экспорт</div></div>
+  <div class="sidebar-menu">
+    <button class="sidebar-item" id="btn-export">
+      <div class="sidebar-icon" style="background:#e3f9e8">📊</div>
+      <div><div class="sidebar-item-text">Экспорт в Excel</div><div class="sidebar-item-desc">Скачать отчёт за период</div></div>
+    </button>
+  </div>
+</div>
+<div class="cal-overlay" id="cal-overlay">
+  <div class="cal-sheet">
+    <div class="cal-handle"></div>
+    <div class="cal-header"><div class="cal-header-title">Выбор периода</div><button class="cal-close" id="cal-close">✕</button></div>
+    <div class="cal-modes">
+      <button class="cal-mode-btn active" data-mode="day">День</button>
+      <button class="cal-mode-btn" data-mode="month">Месяц</button>
+      <button class="cal-mode-btn" data-mode="year">Год</button>
+      <button class="cal-mode-btn" data-mode="range">Период</button>
+    </div>
+    <div id="cal-body"></div>
+    <div class="cal-period-info" id="cal-period-info">Выберите дату</div>
+    <button class="cal-apply" id="cal-apply">Применить</button>
+  </div>
+</div>
+<div class="modal-overlay" id="export-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Экспорт в Excel</div>
+    <div class="modal-sub">Выберите период для отчёта</div>
+    <div class="period-options">
+      <div class="period-opt selected" data-period="cur-month"><span class="period-opt-icon">📅</span><div><div class="period-opt-label">Текущий месяц</div><div class="period-opt-desc" id="lbl-cur-month"></div></div></div>
+      <div class="period-opt" data-period="last-month"><span class="period-opt-icon">🗓</span><div><div class="period-opt-label">Прошлый месяц</div><div class="period-opt-desc" id="lbl-last-month"></div></div></div>
+      <div class="period-opt" data-period="cur-year"><span class="period-opt-icon">📆</span><div><div class="period-opt-label">Текущий год</div><div class="period-opt-desc" id="lbl-cur-year"></div></div></div>
+      <div class="period-opt" data-period="all"><span class="period-opt-icon">🗂</span><div><div class="period-opt-label">Все данные</div><div class="period-opt-desc" id="lbl-all"></div></div></div>
+      <div class="period-opt" data-period="custom"><span class="period-opt-icon">✏️</span><div><div class="period-opt-label">Произвольный период</div><div class="period-opt-desc">Указать даты вручную</div></div></div>
+    </div>
+    <div class="period-custom" id="period-custom">
+      <input class="date-inp" type="date" id="export-from">
+      <span class="date-sep">—</span>
+      <input class="date-inp" type="date" id="export-to">
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" id="btn-modal-cancel">Отмена</button>
+      <button class="modal-btn export" id="btn-modal-export">Скачать Excel</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="header">
+  <button class="burger-btn" id="btn-burger"><div class="burger-line"></div><div class="burger-line"></div><div class="burger-line"></div></button>
+  <div class="hdr-title">💰 Финансы</div>
+  <div class="hdr-month-nav">
+    <button class="hdr-arr" id="btn-prev-month">‹</button>
+    <button class="hdr-month-btn" id="btn-open-cal">
+      <span class="hdr-month-main" id="cur-month-main">Март 2026</span>
+      <span class="hdr-month-sub" id="cur-month-sub">месяц</span>
+    </button>
+    <button class="hdr-arr" id="btn-next-month">›</button>
+  </div>
+</div>
+<div class="tabs">
+  <button class="tab-btn active" id="nav-home"><span>🏠</span>Главная</button>
+  <button class="tab-btn" id="nav-all"><span>📋</span>Все</button>
+  <button class="tab-btn" id="nav-stats"><span>📊</span>Статистика</button>
+</div>
+<div class="page active" id="page-home">
+  <div class="balance-strip">
+    <div class="bal-c"><div class="bl">Доходы</div><div class="bv inc" id="h-inc">0 ₽</div></div>
+    <div class="bal-c"><div class="bl">Расходы</div><div class="bv exp" id="h-exp">0 ₽</div></div>
+    <div class="bal-c"><div class="bl">Баланс</div><div class="bv bal" id="h-bal">0 ₽</div></div>
+  </div>
+  <div class="numpad-section">
+    <div class="amount-display">
+      <div class="amount-main" id="amt-display"><span class="placeholder-txt">Введите сумму...</span></div>
+      <div class="amount-type-toggle">
+        <button class="type-pill exp active" id="pill-exp">− Расход</button>
+        <button class="type-pill inc" id="pill-inc">+ Доход</button>
+      </div>
+    </div>
+    <div class="desc-row"><input class="desc-inp" id="desc-inp" type="text" placeholder="Описание (необязательно)"></div>
+    <div class="cat-dropdown-wrap" id="cat-wrap">
+      <div class="cat-trigger" id="cat-trigger">
+        <div style="display:flex;align-items:center;gap:8px"><span id="cat-trigger-icon"></span><span id="cat-trigger-label">Выберите категорию</span></div>
+        <span class="cat-arrow" id="cat-arrow">▼</span>
+      </div>
+      <div class="cat-dropdown" id="cat-dropdown">
+        <div id="cat-list"></div>
+        <div class="cat-add-row">
+          <input class="cat-add-inp" id="cat-new-inp" type="text" placeholder="Новая категория...">
+          <button class="cat-add-btn" id="btn-add-cat">+ Добавить</button>
+        </div>
+      </div>
+    </div>
+    <div class="numpad" id="numpad">
+      <button class="np-btn" data-v="1">1</button>
+      <button class="np-btn" data-v="2">2</button>
+      <button class="np-btn" data-v="3">3</button>
+      <button class="np-btn add-btn" data-v="ADD"><span class="add-icon">✓</span>Добавить</button>
+      <button class="np-btn" data-v="4">4</button>
+      <button class="np-btn" data-v="5">5</button>
+      <button class="np-btn" data-v="6">6</button>
+      <button class="np-btn" data-v="7">7</button>
+      <button class="np-btn" data-v="8">8</button>
+      <button class="np-btn" data-v="9">9</button>
+      <button class="np-btn del-btn" data-v="DEL">⌫</button>
+      <button class="np-btn" data-v=".">.</button>
+      <button class="np-btn" data-v="0">0</button>
+      <button class="np-btn" data-v="00">00</button>
+    </div>
+  </div>
+  <div class="recent-wrap">
+    <div class="sec-title">Последние операции</div>
+    <div class="tx-list" id="tx-list-home"></div>
+  </div>
+</div>
+<div class="page" id="page-all"><div class="all-wrap" id="all-wrap"></div></div>
+<div class="page" id="page-stats">
+  <div class="stats-wrap">
+    <div class="stat-grid" id="stat-grid"></div>
+    <div class="sec-title">Расходы по категориям</div>
+    <div class="chart-wrap" id="stat-chart"></div>
+  </div>
+</div>
+<script>
+var tg=window.Telegram&&window.Telegram.WebApp;if(tg){tg.ready();tg.expand();}
+var INIT_CATS={expense:['🍕 Еда','🚗 Транспорт','🏠 Жильё','💊 Здоровье','🎮 Развлечения','👗 Одежда','📱 Связь','🛒 Прочее'],income:['💼 Зарплата','💸 Фриланс','📈 Инвестиции','🎁 Подарок','💰 Прочее']};
+var CLRS=['#007aff','#34c759','#ff9500','#ff3b30','#af52de','#5ac8fa','#ff2d55','#30b0c7'];
+var MONTHS_RU=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+var MONTHS_SHORT=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+var WD=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+var cats=JSON.parse(localStorage.getItem('fin_cats_v2')||'null')||JSON.parse(JSON.stringify(INIT_CATS));
+var txs=JSON.parse(localStorage.getItem('fin_v9')||'[]');
+var curType='expense',selCat=cats.expense[0],numVal='';
+var openEdit=null,pendingDelete=null,dropOpen=false,pendingCatDel=null,selPeriod='cur-month';
+var viewDate=new Date();viewDate.setDate(1);
+var viewMode='month',viewSpecific=null,viewRange={from:null,to:null};
+var calMode='day',calNavDate=new Date(),calSelDate=null,calRangeFrom=null,calRangeTo=null,calRangeStep=0;
+function saveCats(){localStorage.setItem('fin_cats_v2',JSON.stringify(cats));}
+function saveTxs(){localStorage.setItem('fin_v9',JSON.stringify(txs));}
+function fmt(n){return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(n)+' ₽';}
+function mkey(d){var dt=new Date(d);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');}
+function dkey(d){return new Date(d).toISOString().split('T')[0];}
+function catIcon(c){return c.split(' ')[0];}
+function getFilteredTxs(){
+  if(viewMode==='month')return txs.filter(function(t){return mkey(t.date)===mkey(viewDate);});
+  if(viewMode==='day'&&viewSpecific){var k=dkey(viewSpecific);return txs.filter(function(t){return t.date===k;});}
+  if(viewMode==='year'&&viewSpecific){var y=viewSpecific.getFullYear();return txs.filter(function(t){return new Date(t.date).getFullYear()===y;});}
+  if(viewMode==='range'&&viewRange.from&&viewRange.to){var f=new Date(viewRange.from),to=new Date(viewRange.to);return txs.filter(function(t){var d=new Date(t.date);return d>=f&&d<=to;});}
+  return txs.filter(function(t){return mkey(t.date)===mkey(viewDate);});
+}
+function getViewLabel(){
+  if(viewMode==='month')return{main:MONTHS_RU[viewDate.getMonth()]+' '+viewDate.getFullYear(),sub:'месяц'};
+  if(viewMode==='day'&&viewSpecific)return{main:viewSpecific.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}),sub:'день'};
+  if(viewMode==='year'&&viewSpecific)return{main:String(viewSpecific.getFullYear()),sub:'год'};
+  if(viewMode==='range'&&viewRange.from&&viewRange.to){var f=new Date(viewRange.from),t=new Date(viewRange.to);return{main:f.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+' — '+t.toLocaleDateString('ru-RU',{day:'numeric',month:'short'}),sub:'период'};}
+  return{main:MONTHS_RU[viewDate.getMonth()]+' '+viewDate.getFullYear(),sub:'месяц'};
+}
+function updateHeaderLabel(){var l=getViewLabel();document.getElementById('cur-month-main').textContent=l.main;document.getElementById('cur-month-sub').textContent=l.sub;}
+document.getElementById('btn-prev-month').addEventListener('click',function(e){e.stopPropagation();if(viewMode==='month'){viewDate.setMonth(viewDate.getMonth()-1);}else if(viewMode==='year'&&viewSpecific){viewSpecific.setFullYear(viewSpecific.getFullYear()-1);}else if(viewMode==='day'&&viewSpecific){viewSpecific.setDate(viewSpecific.getDate()-1);}else{viewDate.setMonth(viewDate.getMonth()-1);}render();});
+document.getElementById('btn-next-month').addEventListener('click',function(e){e.stopPropagation();if(viewMode==='month'){viewDate.setMonth(viewDate.getMonth()+1);}else if(viewMode==='year'&&viewSpecific){viewSpecific.setFullYear(viewSpecific.getFullYear()+1);}else if(viewMode==='day'&&viewSpecific){viewSpecific.setDate(viewSpecific.getDate()+1);}else{viewDate.setMonth(viewDate.getMonth()+1);}render();});
+document.getElementById('btn-open-cal').addEventListener('click',function(e){e.stopPropagation();openCal();});
+document.getElementById('cal-close').addEventListener('click',closeCal);
+document.getElementById('cal-overlay').addEventListener('click',function(e){if(e.target===this)closeCal();});
+document.getElementById('cal-apply').addEventListener('click',applyCalendar);
+document.querySelectorAll('.cal-mode-btn').forEach(function(btn){btn.addEventListener('click',function(){calMode=btn.getAttribute('data-mode');document.querySelectorAll('.cal-mode-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderCalBody();});});
+function openCal(){calNavDate=new Date(viewDate);calSelDate=viewMode==='day'&&viewSpecific?new Date(viewSpecific):null;calRangeFrom=viewMode==='range'&&viewRange.from?new Date(viewRange.from):null;calRangeTo=viewMode==='range'&&viewRange.to?new Date(viewRange.to):null;calRangeStep=0;var im=viewMode==='range'?'range':viewMode==='year'?'year':viewMode==='day'?'day':'month';calMode=im;document.querySelectorAll('.cal-mode-btn').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-mode')===calMode);});document.getElementById('cal-overlay').classList.add('open');renderCalBody();}
+function closeCal(){document.getElementById('cal-overlay').classList.remove('open');}
+function renderCalBody(){var body=document.getElementById('cal-body');if(calMode==='day')renderDayGrid(body);else if(calMode==='month')renderMonthGrid(body);else if(calMode==='year')renderYearGrid(body);else renderRangeGrid(body);updateCalInfo();}
+function renderDayGrid(body){var y=calNavDate.getFullYear(),m=calNavDate.getMonth();var fd=new Date(y,m,1).getDay();fd=(fd+6)%7;var dim=new Date(y,m+1,0).getDate();var today=new Date();today.setHours(0,0,0,0);var html='<div class="cal-nav"><button class="cal-nav-arr" id="cal-prev">‹</button><span class="cal-nav-title">'+MONTHS_RU[m]+' '+y+'</span><button class="cal-nav-arr" id="cal-next">›</button></div><div class="cal-weekdays">'+WD.map(function(d){return'<div class="cal-wd">'+d+'</div>';}).join('')+'</div><div class="cal-days">';var pd=new Date(y,m,0).getDate();for(var i=0;i<fd;i++)html+='<button class="cal-day other-month">'+(pd-fd+1+i)+'</button>';for(var d=1;d<=dim;d++){var dt=new Date(y,m,d);dt.setHours(0,0,0,0);var cls='cal-day';if(dt.getTime()===today.getTime())cls+=' today';if(calSelDate&&dt.getTime()===new Date(calSelDate).setHours(0,0,0,0))cls+=' selected';html+='<button class="'+cls+'" data-date="'+dkey(dt)+'">'+d+'</button>';}var tot=fd+dim,rem=tot%7?7-(tot%7):0;for(var i=1;i<=rem;i++)html+='<button class="cal-day other-month">'+i+'</button>';html+='</div>';body.innerHTML=html;body.querySelector('#cal-prev').addEventListener('click',function(e){e.stopPropagation();calNavDate.setMonth(calNavDate.getMonth()-1);renderCalBody();});body.querySelector('#cal-next').addEventListener('click',function(e){e.stopPropagation();calNavDate.setMonth(calNavDate.getMonth()+1);renderCalBody();});body.querySelectorAll('.cal-day[data-date]').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();calSelDate=new Date(btn.getAttribute('data-date')+'T00:00:00');renderCalBody();});});}
+function renderMonthGrid(body){var y=calNavDate.getFullYear();var html='<div class="cal-nav"><button class="cal-nav-arr" id="cal-prev">‹</button><span class="cal-nav-title">'+y+'</span><button class="cal-nav-arr" id="cal-next">›</button></div><div class="cal-months">';MONTHS_SHORT.forEach(function(mn,i){var sel=(viewMode==='month'&&i===viewDate.getMonth()&&y===viewDate.getFullYear())||(calSelDate&&i===calSelDate.getMonth()&&y===calSelDate.getFullYear());html+='<button class="cal-month-item'+(sel?' selected':'')+'" data-mi="'+i+'">'+mn+'</button>';});html+='</div>';body.innerHTML=html;body.querySelector('#cal-prev').addEventListener('click',function(e){e.stopPropagation();calNavDate.setFullYear(calNavDate.getFullYear()-1);renderCalBody();});body.querySelector('#cal-next').addEventListener('click',function(e){e.stopPropagation();calNavDate.setFullYear(calNavDate.getFullYear()+1);renderCalBody();});body.querySelectorAll('.cal-month-item').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();calSelDate=new Date(calNavDate.getFullYear(),parseInt(btn.getAttribute('data-mi')),1);renderCalBody();});});}
+function renderYearGrid(body){var base=Math.floor(calNavDate.getFullYear()/10)*10;var html='<div class="cal-nav"><button class="cal-nav-arr" id="cal-prev">‹</button><span class="cal-nav-title">'+base+'–'+(base+9)+'</span><button class="cal-nav-arr" id="cal-next">›</button></div><div class="cal-years">';for(var y=base;y<base+12;y++){var sel=(viewMode==='year'&&viewSpecific&&viewSpecific.getFullYear()===y)||(calSelDate&&calSelDate.getFullYear()===y);html+='<button class="cal-year-item'+(sel?' selected':'')+'" data-y="'+y+'">'+y+'</button>';}html+='</div>';body.innerHTML=html;body.querySelector('#cal-prev').addEventListener('click',function(e){e.stopPropagation();calNavDate.setFullYear(calNavDate.getFullYear()-10);renderCalBody();});body.querySelector('#cal-next').addEventListener('click',function(e){e.stopPropagation();calNavDate.setFullYear(calNavDate.getFullYear()+10);renderCalBody();});body.querySelectorAll('.cal-year-item').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();calSelDate=new Date(parseInt(btn.getAttribute('data-y')),0,1);renderCalBody();});});}
+function renderRangeGrid(body){var y=calNavDate.getFullYear(),m=calNavDate.getMonth();var fd=new Date(y,m,1).getDay();fd=(fd+6)%7;var dim=new Date(y,m+1,0).getDate();var today=new Date();today.setHours(0,0,0,0);var f=calRangeFrom?new Date(calRangeFrom):null,t=calRangeTo?new Date(calRangeTo):null;if(f)f.setHours(0,0,0,0);if(t)t.setHours(0,0,0,0);var html='<div class="cal-nav"><button class="cal-nav-arr" id="cal-prev">‹</button><span class="cal-nav-title">'+MONTHS_RU[m]+' '+y+'</span><button class="cal-nav-arr" id="cal-next">›</button></div><div class="cal-weekdays">'+WD.map(function(d){return'<div class="cal-wd">'+d+'</div>';}).join('')+'</div><div class="cal-days">';var pd=new Date(y,m,0).getDate();for(var i=0;i<fd;i++)html+='<button class="cal-day other-month">'+(pd-fd+1+i)+'</button>';for(var d=1;d<=dim;d++){var dt=new Date(y,m,d);dt.setHours(0,0,0,0);var cls='cal-day';if(dt.getTime()===today.getTime())cls+=' today';var isF=f&&dt.getTime()===f.getTime(),isT=t&&dt.getTime()===t.getTime(),inR=f&&t&&dt>f&&dt<t;if(isF&&isT)cls+=' selected';else if(isF)cls+=' range-start';else if(isT)cls+=' range-end';else if(inR)cls+=' in-range';html+='<button class="'+cls+'" data-date="'+dkey(dt)+'">'+d+'</button>';}var tot=fd+dim,rem=tot%7?7-(tot%7):0;for(var i=1;i<=rem;i++)html+='<button class="cal-day other-month">'+i+'</button>';html+='</div>';body.innerHTML=html;body.querySelector('#cal-prev').addEventListener('click',function(e){e.stopPropagation();calNavDate.setMonth(calNavDate.getMonth()-1);renderCalBody();});body.querySelector('#cal-next').addEventListener('click',function(e){e.stopPropagation();calNavDate.setMonth(calNavDate.getMonth()+1);renderCalBody();});body.querySelectorAll('.cal-day[data-date]').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();var d=new Date(btn.getAttribute('data-date')+'T00:00:00');if(calRangeStep===0){calRangeFrom=d;calRangeTo=null;calRangeStep=1;}else{if(d<calRangeFrom){calRangeTo=new Date(calRangeFrom);calRangeFrom=d;}else calRangeTo=d;calRangeStep=0;}renderCalBody();});});}
+function updateCalInfo(){var info=document.getElementById('cal-period-info');if(calMode==='day'&&calSelDate){info.innerHTML='День: <span>'+calSelDate.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})+'</span>';}else if(calMode==='month'&&calSelDate){info.innerHTML='Месяц: <span>'+MONTHS_RU[calSelDate.getMonth()]+' '+calSelDate.getFullYear()+'</span>';}else if(calMode==='year'&&calSelDate){info.innerHTML='Год: <span>'+calSelDate.getFullYear()+'</span>';}else if(calMode==='range'){if(calRangeFrom&&calRangeTo){info.innerHTML='<span>'+calRangeFrom.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+'</span> — <span>'+calRangeTo.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'})+'</span>';}else if(calRangeFrom){info.innerHTML='Начало: <span>'+calRangeFrom.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+'</span> → выберите конец';}else{info.textContent='Выберите начало периода';}}else{info.textContent='Выберите дату';}}
+function applyCalendar(){if(calMode==='day'&&calSelDate){viewMode='day';viewSpecific=new Date(calSelDate);viewDate.setFullYear(viewSpecific.getFullYear());viewDate.setMonth(viewSpecific.getMonth());}else if(calMode==='month'&&calSelDate){viewMode='month';viewDate=new Date(calSelDate.getFullYear(),calSelDate.getMonth(),1);}else if(calMode==='year'&&calSelDate){viewMode='year';viewSpecific=new Date(calSelDate.getFullYear(),0,1);}else if(calMode==='range'&&calRangeFrom&&calRangeTo){viewMode='range';viewRange={from:new Date(calRangeFrom),to:new Date(calRangeTo)};}else{showToast('Выберите дату или период');return;}closeCal();updateHeaderLabel();render();}
+(function(){var pad=document.getElementById('numpad');function handleNp(e){e.stopPropagation();e.preventDefault();var btn=e.target.closest('.np-btn');if(!btn)return;var v=btn.getAttribute('data-v');if(!v)return;if(v==='ADD'){addTx();return;}if(v==='DEL')numVal=numVal.slice(0,-1);else if(v==='.'){if(!numVal.includes('.'))numVal+=numVal?'.':'0.';}else if(v==='00'){if(numVal&&numVal!=='0')numVal+='00';}else{if(numVal==='0')numVal=v;else numVal+=v;if(numVal.length>10)numVal=numVal.slice(0,-1);}refreshAmt();}pad.addEventListener('touchend',handleNp,{passive:false});pad.addEventListener('click',handleNp);})();
+function refreshAmt(){var el=document.getElementById('amt-display');if(numVal){el.innerHTML=numVal+' <small style="font-size:18px;color:#8e8e93;font-weight:400">₽</small>';el.style.color='';}else el.innerHTML='<span class="placeholder-txt">Введите сумму...</span>';}
+document.getElementById('nav-home').addEventListener('click',function(){switchPage('home');});
+document.getElementById('nav-all').addEventListener('click',function(){switchPage('all');});
+document.getElementById('nav-stats').addEventListener('click',function(){switchPage('stats');});
+function switchPage(name){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});document.getElementById('page-'+name).classList.add('active');document.getElementById('nav-'+name).classList.add('active');}
+document.getElementById('pill-exp').addEventListener('click',function(e){e.stopPropagation();setType('expense');});
+document.getElementById('pill-inc').addEventListener('click',function(e){e.stopPropagation();setType('income');});
+function setType(t){curType=t;document.getElementById('pill-exp').classList.toggle('active',t==='expense');document.getElementById('pill-inc').classList.toggle('active',t==='income');selCat=cats[t][0]||'';updateTrigger();closeDropdown();}
+document.getElementById('cat-trigger').addEventListener('click',function(e){e.stopPropagation();toggleDropdown();});
+document.addEventListener('click',function(e){if(!dropOpen)return;if(!document.getElementById('cat-wrap').contains(e.target))closeDropdown();});
+function toggleDropdown(){dropOpen=!dropOpen;document.getElementById('cat-dropdown').classList.toggle('open',dropOpen);document.getElementById('cat-trigger').classList.toggle('open',dropOpen);document.getElementById('cat-arrow').style.transform=dropOpen?'rotate(180deg)':'';if(dropOpen){pendingCatDel=null;renderCatList();}}
+function closeDropdown(){dropOpen=false;pendingCatDel=null;document.getElementById('cat-dropdown').classList.remove('open');document.getElementById('cat-trigger').classList.remove('open');document.getElementById('cat-arrow').style.transform='';}
+function renderCatList(){document.getElementById('cat-list').innerHTML=cats[curType].map(function(c){var isSel=c===selCat,isPend=pendingCatDel===c;var cs=c.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return'<div class="cat-opt'+(isSel?' selected':'')+'" data-cat="'+cs+'"><span>'+c+'</span><div class="cat-opt-right">'+(isSel?'<span class="cat-opt-check">✓</span>':'')+'<button class="cat-del-btn'+(isPend?' confirming':'')+'" data-del="'+cs+'">'+(isPend?'Удалить?':'×')+'</button></div></div>';}).join('');}
+document.getElementById('cat-list').addEventListener('click',function(e){e.stopPropagation();var del=e.target.closest('.cat-del-btn');if(del){catDelClick(del.getAttribute('data-del'));return;}var opt=e.target.closest('.cat-opt');if(opt)pickCat(opt.getAttribute('data-cat'));});
+function catDelClick(c){if(pendingCatDel===c){cats[curType]=cats[curType].filter(function(x){return x!==c;});saveCats();if(selCat===c){selCat=cats[curType][0]||'';updateTrigger();}pendingCatDel=null;if(!cats[curType].length)closeDropdown();else renderCatList();}else{pendingCatDel=c;renderCatList();setTimeout(function(){if(pendingCatDel===c){pendingCatDel=null;renderCatList();}},3000);}}
+function pickCat(c){selCat=c;updateTrigger();closeDropdown();}
+function updateTrigger(){document.getElementById('cat-trigger-icon').textContent=selCat?catIcon(selCat):'📌';document.getElementById('cat-trigger-label').textContent=selCat||'Выберите категорию';}
+document.getElementById('btn-add-cat').addEventListener('click',function(e){e.stopPropagation();var inp=document.getElementById('cat-new-inp'),val=inp.value.trim();if(!val)return;var full=val.includes(' ')?val:'📌 '+val;if(!cats[curType].includes(full)){cats[curType].push(full);saveCats();}inp.value='';pickCat(full);renderCatList();});
+document.getElementById('btn-burger').addEventListener('click',function(e){e.stopPropagation();openSidebar();});
+document.getElementById('sidebar-overlay').addEventListener('click',closeSidebar);
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebar-overlay').classList.add('open');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('open');}
+document.getElementById('btn-export').addEventListener('click',function(){closeSidebar();openExportModal();});
+document.getElementById('btn-modal-cancel').addEventListener('click',closeExportModal);
+document.getElementById('btn-modal-export').addEventListener('click',doExport);
+document.querySelectorAll('.period-opt').forEach(function(el){el.addEventListener('click',function(){selPeriod=el.getAttribute('data-period');document.querySelectorAll('.period-opt').forEach(function(o){o.classList.remove('selected');});el.classList.add('selected');document.getElementById('period-custom').classList.toggle('visible',selPeriod==='custom');});});
+function openExportModal(){var now=new Date(),prev=new Date(now.getFullYear(),now.getMonth()-1,1);document.getElementById('lbl-cur-month').textContent=MONTHS_RU[now.getMonth()]+' '+now.getFullYear();document.getElementById('lbl-last-month').textContent=MONTHS_RU[prev.getMonth()]+' '+prev.getFullYear();document.getElementById('lbl-cur-year').textContent=now.getFullYear()+' год';document.getElementById('lbl-all').textContent=txs.length?txs.length+' операций':'Нет данных';document.getElementById('export-from').value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0];document.getElementById('export-to').value=now.toISOString().split('T')[0];selPeriod='cur-month';document.querySelectorAll('.period-opt').forEach(function(o){o.classList.toggle('selected',o.getAttribute('data-period')==='cur-month');});document.getElementById('period-custom').classList.remove('visible');document.getElementById('export-modal').classList.add('open');}
+function closeExportModal(){document.getElementById('export-modal').classList.remove('open');}
+function getExportTxs(){var now=new Date(),from,to;if(selPeriod==='cur-month'){from=new Date(now.getFullYear(),now.getMonth(),1);to=new Date(now.getFullYear(),now.getMonth()+1,0);}else if(selPeriod==='last-month'){from=new Date(now.getFullYear(),now.getMonth()-1,1);to=new Date(now.getFullYear(),now.getMonth(),0);}else if(selPeriod==='cur-year'){from=new Date(now.getFullYear(),0,1);to=new Date(now.getFullYear(),11,31);}else if(selPeriod==='all'){return txs.slice().sort(function(a,b){return new Date(a.date)-new Date(b.date);});}else if(selPeriod==='custom'){from=new Date(document.getElementById('export-from').value);to=new Date(document.getElementById('export-to').value);}return txs.filter(function(t){var d=new Date(t.date);return d>=from&&d<=to;}).sort(function(a,b){return new Date(a.date)-new Date(b.date);});}
+function doExport(){var data=getExportTxs();if(!data.length){showToast('Нет данных за выбранный период');return;}var rows=[['Дата','Тип','Категория','Описание','Сумма (₽)']];var ti=0,te=0;data.forEach(function(t){rows.push([new Date(t.date).toLocaleDateString('ru-RU'),t.type==='income'?'Доход':'Расход',t.category,t.description||'',t.type==='income'?t.amount:-t.amount]);if(t.type==='income')ti+=t.amount;else te+=t.amount;});rows.push([],[],['',' ','','Итого доходы:',ti],['',' ','','Итого расходы:',-te],['',' ','','Баланс:',ti-te]);var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:12},{wch:10},{wch:20},{wch:24},{wch:14}];var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Финансы');var names={'cur-month':'текущий_месяц','last-month':'прошлый_месяц','cur-year':'год','all':'все_данные','custom':'период'};XLSX.writeFile(wb,'финансы_'+names[selPeriod]+'.xlsx');closeExportModal();showToast('Excel-файл скачан ✓');}
+function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
+function addTx(){var amt=parseFloat(numVal);if(!amt||amt<=0){var el=document.getElementById('amt-display');el.style.color='#ff3b30';setTimeout(function(){el.style.color='';},600);return;}if(!selCat)return;txs.unshift({id:Date.now().toString(),type:curType,amount:amt,category:selCat,description:document.getElementById('desc-inp').value.trim(),date:new Date().toISOString().split('T')[0]});saveTxs();numVal='';document.getElementById('amt-display').innerHTML='<span class="placeholder-txt">Введите сумму...</span>';document.getElementById('desc-inp').value='';render();}
+function toggleEdit(id){openEdit=openEdit===id?null:id;pendingDelete=null;renderLists();}
+function saveEdit(id){var t=txs.find(function(x){return x.id===id;});if(!t)return;t.amount=parseFloat(document.getElementById('ea-'+id).value)||0;t.category=document.getElementById('ec-'+id).value;t.description=document.getElementById('ed-'+id).value;t.date=document.getElementById('edt-'+id).value;openEdit=null;pendingDelete=null;saveTxs();render();}
+function delTx(id){if(pendingDelete===id){txs=txs.filter(function(x){return x.id!==id;});openEdit=null;pendingDelete=null;saveTxs();render();}else{pendingDelete=id;var btn=document.getElementById('delbtn-'+id);if(btn){btn.textContent='Подтвердить';btn.classList.add('confirm');}setTimeout(function(){if(pendingDelete===id){pendingDelete=null;if(btn){btn.textContent='Удалить';btn.classList.remove('confirm');}}},3000);}}
+function txBlock(t){var isInc=t.type==='income',isOpen=openEdit===t.id;var opts=cats[t.type].map(function(c){return'<option value="'+c+'"'+(c===t.category?' selected':'')+'>'+c+'</option>';}).join('');return'<div><div class="tx-item" onclick="toggleEdit(\''+t.id+'\')"><div class="tx-icon" style="background:'+(isInc?'#e3f9e8':'#fff5f5')+'">'+catIcon(t.category)+'</div><div class="tx-info"><div class="tx-name">'+(t.description||t.category)+'</div><div class="tx-meta">'+t.category+' · '+new Date(t.date).toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+'</div></div><span class="tx-amt '+t.type+'">'+(isInc?'+':'-')+fmt(t.amount)+'</span></div><div class="edit-panel'+(isOpen?' visible':'')+'"><div class="ep-row"><input class="ep-inp" id="ea-'+t.id+'" type="number" value="'+t.amount+'" onclick="event.stopPropagation()"><select class="ep-inp" id="ec-'+t.id+'" onclick="event.stopPropagation()">'+opts+'</select></div><div class="ep-row"><input class="ep-inp" id="ed-'+t.id+'" type="text" value="'+(t.description||'')+'" placeholder="Описание" onclick="event.stopPropagation()"><input class="ep-inp" id="edt-'+t.id+'" type="date" value="'+t.date+'" onclick="event.stopPropagation()"></div><button class="ep-save" onclick="event.stopPropagation();saveEdit(\''+t.id+'\')">Сохранить</button><button class="ep-save ep-del" id="delbtn-'+t.id+'" onclick="event.stopPropagation();delTx(\''+t.id+'\')">Удалить</button></div></div>';}
+function renderLists(){var mtxs=getFilteredTxs().sort(function(a,b){return new Date(b.date)-new Date(a.date);});document.getElementById('tx-list-home').innerHTML=mtxs.length?mtxs.slice(0,6).map(txBlock).join(''):'<div class="empty">Нет операций</div>';document.getElementById('all-wrap').innerHTML=mtxs.length?'<div class="sec-title">Операции</div>'+mtxs.map(txBlock).join(''):'<div class="empty">Нет операций</div>';}
+function renderHeader(){var mtxs=getFilteredTxs();var inc=mtxs.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);var exp=mtxs.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);document.getElementById('h-inc').textContent=fmt(inc);document.getElementById('h-exp').textContent=fmt(exp);var b=inc-exp,el=document.getElementById('h-bal');el.textContent=fmt(b);el.style.color=b>=0?'#34c759':'#ff3b30';updateHeaderLabel();}
+function renderStats(){var mtxs=getFilteredTxs();var inc=mtxs.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);var exp=mtxs.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);var exps=mtxs.filter(function(t){return t.type==='expense';});var avg=exps.length?Math.round(exp/exps.length):0;document.getElementById('stat-grid').innerHTML='<div class="stat-card"><div class="stat-lbl">Доходы</div><div class="stat-val" style="color:#34c759">'+fmt(inc)+'</div></div><div class="stat-card"><div class="stat-lbl">Расходы</div><div class="stat-val" style="color:#ff3b30">'+fmt(exp)+'</div></div><div class="stat-card"><div class="stat-lbl">Операций</div><div class="stat-val">'+mtxs.length+'</div></div><div class="stat-card"><div class="stat-lbl">Средний расход</div><div class="stat-val">'+fmt(avg)+'</div></div>';var catMap={};exps.forEach(function(t){catMap[t.category]=(catMap[t.category]||0)+t.amount;});var sorted=Object.entries(catMap).sort(function(a,b){return b[1]-a[1];});var sc=document.getElementById('stat-chart');if(!sorted.length){sc.innerHTML='<div class="empty">Нет расходов</div>';return;}var max=sorted[0][1];sc.innerHTML=sorted.map(function(e,i){return'<div class="bar-row"><span class="bar-cat">'+e[0]+'</span><div class="bar-bg"><div class="bar-fill" style="width:'+Math.round(e[1]/max*100)+'%;background:'+CLRS[i%CLRS.length]+'"></div></div><span class="bar-amt">'+fmt(e[1])+'</span></div>';}).join('');}
+function render(){renderHeader();renderLists();renderStats();}
+selCat=cats[curType][0]||'';updateTrigger();render();
+</script>
+</body>
+</html>
