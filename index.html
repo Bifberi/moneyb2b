@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Финансы</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f2f2f7; color: #1c1c1e; min-height: 100vh; display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; }
@@ -48,7 +47,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); padding: 0 12px; margin-bottom: 4px; }
 .cal-wd { text-align: center; font-size: 11px; color: #8e8e93; padding: 4px 0; font-weight: 500; }
 .cal-days { display: grid; grid-template-columns: repeat(7,1fr); padding: 0 12px; gap: 2px; }
-.cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 50%; cursor: pointer; transition: all 0.1s; color: #1c1c1e; border: none; background: none; font-family: inherit; }
+.cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 14px; border-radius: 50%; cursor: pointer; color: #1c1c1e; border: none; background: none; font-family: inherit; }
 .cal-day:active { background: #f0f0f5; }
 .cal-day.today { color: #007aff; font-weight: 700; }
 .cal-day.selected { background: #007aff; color: #fff; font-weight: 600; }
@@ -78,15 +77,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .period-opt-icon { font-size: 20px; }
 .period-opt-label { font-size: 14px; font-weight: 500; }
 .period-opt-desc { font-size: 11px; color: #8e8e93; margin-top: 1px; }
-.period-custom { display: none; gap: 8px; margin-bottom: 18px; }
-.period-custom.visible { display: flex; }
-.date-inp { flex: 1; background: #f2f2f7; border: 0.5px solid #d1d1d6; border-radius: 10px; color: #1c1c1e; font-size: 13px; padding: 9px 12px; outline: none; font-family: inherit; }
-.date-inp:focus { border-color: #007aff; }
-.date-sep { align-self: center; color: #8e8e93; font-size: 13px; }
 .modal-btns { display: flex; gap: 8px; }
 .modal-btn { flex: 1; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; padding: 13px; cursor: pointer; font-family: inherit; }
 .modal-btn.cancel { background: #f2f2f7; color: #3c3c43; }
-.modal-btn.export { background: #007aff; color: #fff; }
+.modal-btn.export { background: #34c759; color: #fff; }
+.modal-btn.export:disabled { background: #c7c7cc; }
 .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1c1c1e; color: #fff; font-size: 13px; padding: 10px 18px; border-radius: 20px; opacity: 0; transition: all 0.3s; z-index: 100; white-space: nowrap; pointer-events: none; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .tabs { display: flex; background: #fff; border-bottom: 0.5px solid #e0e0e5; padding: 0 12px; }
@@ -179,10 +174,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="sidebar-menu">
     <button class="sidebar-item" id="btn-export">
       <div class="sidebar-icon" style="background:#e3f9e8">📊</div>
-      <div><div class="sidebar-item-text">Экспорт в Excel</div><div class="sidebar-item-desc">Скачать отчёт за период</div></div>
+      <div><div class="sidebar-item-text">Отправить отчёт</div><div class="sidebar-item-desc">CSV файл в Telegram</div></div>
     </button>
   </div>
 </div>
+
 <div class="cal-overlay" id="cal-overlay">
   <div class="cal-sheet">
     <div class="cal-handle"></div>
@@ -198,30 +194,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <button class="cal-apply" id="cal-apply">Применить</button>
   </div>
 </div>
+
 <div class="modal-overlay" id="export-modal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">Экспорт в Excel</div>
-    <div class="modal-sub">Выберите период для отчёта</div>
+    <div class="modal-title">📊 Отправить отчёт</div>
+    <div class="modal-sub">Файл придёт в этот чат в Telegram</div>
     <div class="period-options">
       <div class="period-opt selected" data-period="cur-month"><span class="period-opt-icon">📅</span><div><div class="period-opt-label">Текущий месяц</div><div class="period-opt-desc" id="lbl-cur-month"></div></div></div>
       <div class="period-opt" data-period="last-month"><span class="period-opt-icon">🗓</span><div><div class="period-opt-label">Прошлый месяц</div><div class="period-opt-desc" id="lbl-last-month"></div></div></div>
       <div class="period-opt" data-period="cur-year"><span class="period-opt-icon">📆</span><div><div class="period-opt-label">Текущий год</div><div class="period-opt-desc" id="lbl-cur-year"></div></div></div>
       <div class="period-opt" data-period="all"><span class="period-opt-icon">🗂</span><div><div class="period-opt-label">Все данные</div><div class="period-opt-desc" id="lbl-all"></div></div></div>
-      <div class="period-opt" data-period="custom"><span class="period-opt-icon">✏️</span><div><div class="period-opt-label">Произвольный период</div><div class="period-opt-desc">Указать даты вручную</div></div></div>
-    </div>
-    <div class="period-custom" id="period-custom">
-      <input class="date-inp" type="date" id="export-from">
-      <span class="date-sep">—</span>
-      <input class="date-inp" type="date" id="export-to">
     </div>
     <div class="modal-btns">
       <button class="modal-btn cancel" id="btn-modal-cancel">Отмена</button>
-      <button class="modal-btn export" id="btn-modal-export">Скачать Excel</button>
+      <button class="modal-btn export" id="btn-modal-export">📤 Отправить в Telegram</button>
     </div>
   </div>
 </div>
+
 <div class="toast" id="toast"></div>
+
 <div class="header">
   <button class="burger-btn" id="btn-burger"><div class="burger-line"></div><div class="burger-line"></div><div class="burger-line"></div></button>
   <div class="hdr-title">💰 Финансы</div>
@@ -234,11 +227,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <button class="hdr-arr" id="btn-next-month">›</button>
   </div>
 </div>
+
 <div class="tabs">
   <button class="tab-btn active" id="nav-home"><span>🏠</span>Главная</button>
   <button class="tab-btn" id="nav-all"><span>📋</span>Все</button>
   <button class="tab-btn" id="nav-stats"><span>📊</span>Статистика</button>
 </div>
+
 <div class="page active" id="page-home">
   <div class="balance-strip">
     <div class="bal-c"><div class="bl">Доходы</div><div class="bv inc" id="h-inc">0 ₽</div></div>
@@ -289,6 +284,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="tx-list" id="tx-list-home"></div>
   </div>
 </div>
+
 <div class="page" id="page-all"><div class="all-wrap" id="all-wrap"></div></div>
 <div class="page" id="page-stats">
   <div class="stats-wrap">
@@ -297,66 +293,97 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="chart-wrap" id="stat-chart"></div>
   </div>
 </div>
+
 <script>
-var tg=window.Telegram&&window.Telegram.WebApp;if(tg){tg.ready();tg.expand();}
-var INIT_CATS={expense:['🍕 Еда','🚗 Транспорт','🏠 Жильё','💊 Здоровье','🎮 Развлечения','👗 Одежда','📱 Связь','🛒 Прочее'],income:['💼 Зарплата','💸 Фриланс','📈 Инвестиции','🎁 Подарок','💰 Прочее']};
-var CLRS=['#007aff','#34c759','#ff9500','#ff3b30','#af52de','#5ac8fa','#ff2d55','#30b0c7'];
-var MONTHS_RU=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-var MONTHS_SHORT=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
-var WD=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-var cats=JSON.parse(localStorage.getItem('fin_cats_v2')||'null')||JSON.parse(JSON.stringify(INIT_CATS));
-var txs=JSON.parse(localStorage.getItem('fin_v9')||'[]');
-var curType='expense',selCat=cats.expense[0],numVal='';
-var openEdit=null,pendingDelete=null,dropOpen=false,pendingCatDel=null,selPeriod='cur-month';
-var viewDate=new Date();viewDate.setDate(1);
-var viewMode='month',viewSpecific=null,viewRange={from:null,to:null};
-var calMode='day',calNavDate=new Date(),calSelDate=null,calRangeFrom=null,calRangeTo=null,calRangeStep=0;
+var tg = window.Telegram && window.Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+// ── КОНФИГ ──
+var BOT_TOKEN = '8725764181:AAHtyEVxp7KAMqL5r-zEnSxrazu7SCVe1B0';
+var CHAT_ID   = '7596106417';
+var WORKER_URL = 'https://cashb2b.guchmansvu.workers.dev';
+
+var INIT_CATS = {
+  expense: ['🍕 Еда','🚗 Транспорт','🏠 Жильё','💊 Здоровье','🎮 Развлечения','👗 Одежда','📱 Связь','🛒 Прочее'],
+  income:  ['💼 Зарплата','💸 Фриланс','📈 Инвестиции','🎁 Подарок','💰 Прочее']
+};
+var CLRS = ['#007aff','#34c759','#ff9500','#ff3b30','#af52de','#5ac8fa','#ff2d55','#30b0c7'];
+var MONTHS_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+var MONTHS_SHORT = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+var WD = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+var cats = JSON.parse(localStorage.getItem('fin_cats_v2')||'null') || JSON.parse(JSON.stringify(INIT_CATS));
+var txs  = JSON.parse(localStorage.getItem('fin_v9')||'[]');
+var curType='expense', selCat=cats.expense[0], numVal='';
+var openEdit=null, pendingDelete=null, dropOpen=false, pendingCatDel=null, selPeriod='cur-month';
+var viewDate=new Date(); viewDate.setDate(1);
+var viewMode='month', viewSpecific=null, viewRange={from:null,to:null};
+var calMode='day', calNavDate=new Date(), calSelDate=null, calRangeFrom=null, calRangeTo=null, calRangeStep=0;
+
 function saveCats(){localStorage.setItem('fin_cats_v2',JSON.stringify(cats));}
 function saveTxs(){localStorage.setItem('fin_v9',JSON.stringify(txs));}
 function fmt(n){return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(n)+' ₽';}
 function mkey(d){var dt=new Date(d);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');}
 function dkey(d){return new Date(d).toISOString().split('T')[0];}
 function catIcon(c){return c.split(' ')[0];}
+
 function getFilteredTxs(){
-  if(viewMode==='month')return txs.filter(function(t){return mkey(t.date)===mkey(viewDate);});
+  if(viewMode==='month') return txs.filter(function(t){return mkey(t.date)===mkey(viewDate);});
   if(viewMode==='day'&&viewSpecific){var k=dkey(viewSpecific);return txs.filter(function(t){return t.date===k;});}
   if(viewMode==='year'&&viewSpecific){var y=viewSpecific.getFullYear();return txs.filter(function(t){return new Date(t.date).getFullYear()===y;});}
   if(viewMode==='range'&&viewRange.from&&viewRange.to){var f=new Date(viewRange.from),to=new Date(viewRange.to);return txs.filter(function(t){var d=new Date(t.date);return d>=f&&d<=to;});}
   return txs.filter(function(t){return mkey(t.date)===mkey(viewDate);});
 }
+
 function getViewLabel(){
-  if(viewMode==='month')return{main:MONTHS_RU[viewDate.getMonth()]+' '+viewDate.getFullYear(),sub:'месяц'};
-  if(viewMode==='day'&&viewSpecific)return{main:viewSpecific.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}),sub:'день'};
-  if(viewMode==='year'&&viewSpecific)return{main:String(viewSpecific.getFullYear()),sub:'год'};
+  if(viewMode==='month') return{main:MONTHS_RU[viewDate.getMonth()]+' '+viewDate.getFullYear(),sub:'месяц'};
+  if(viewMode==='day'&&viewSpecific) return{main:viewSpecific.toLocaleDateString('ru-RU',{day:'numeric',month:'long'}),sub:'день'};
+  if(viewMode==='year'&&viewSpecific) return{main:String(viewSpecific.getFullYear()),sub:'год'};
   if(viewMode==='range'&&viewRange.from&&viewRange.to){var f=new Date(viewRange.from),t=new Date(viewRange.to);return{main:f.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+' — '+t.toLocaleDateString('ru-RU',{day:'numeric',month:'short'}),sub:'период'};}
   return{main:MONTHS_RU[viewDate.getMonth()]+' '+viewDate.getFullYear(),sub:'месяц'};
 }
 function updateHeaderLabel(){var l=getViewLabel();document.getElementById('cur-month-main').textContent=l.main;document.getElementById('cur-month-sub').textContent=l.sub;}
+
+// ── СТРЕЛКИ ──
 document.getElementById('btn-prev-month').addEventListener('click',function(e){e.stopPropagation();if(viewMode==='month'){viewDate.setMonth(viewDate.getMonth()-1);}else if(viewMode==='year'&&viewSpecific){viewSpecific.setFullYear(viewSpecific.getFullYear()-1);}else if(viewMode==='day'&&viewSpecific){viewSpecific.setDate(viewSpecific.getDate()-1);}else{viewDate.setMonth(viewDate.getMonth()-1);}render();});
 document.getElementById('btn-next-month').addEventListener('click',function(e){e.stopPropagation();if(viewMode==='month'){viewDate.setMonth(viewDate.getMonth()+1);}else if(viewMode==='year'&&viewSpecific){viewSpecific.setFullYear(viewSpecific.getFullYear()+1);}else if(viewMode==='day'&&viewSpecific){viewSpecific.setDate(viewSpecific.getDate()+1);}else{viewDate.setMonth(viewDate.getMonth()+1);}render();});
+
+// ── КАЛЕНДАРЬ ──
 document.getElementById('btn-open-cal').addEventListener('click',function(e){e.stopPropagation();openCal();});
 document.getElementById('cal-close').addEventListener('click',closeCal);
 document.getElementById('cal-overlay').addEventListener('click',function(e){if(e.target===this)closeCal();});
 document.getElementById('cal-apply').addEventListener('click',applyCalendar);
 document.querySelectorAll('.cal-mode-btn').forEach(function(btn){btn.addEventListener('click',function(){calMode=btn.getAttribute('data-mode');document.querySelectorAll('.cal-mode-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderCalBody();});});
+
 function openCal(){calNavDate=new Date(viewDate);calSelDate=viewMode==='day'&&viewSpecific?new Date(viewSpecific):null;calRangeFrom=viewMode==='range'&&viewRange.from?new Date(viewRange.from):null;calRangeTo=viewMode==='range'&&viewRange.to?new Date(viewRange.to):null;calRangeStep=0;var im=viewMode==='range'?'range':viewMode==='year'?'year':viewMode==='day'?'day':'month';calMode=im;document.querySelectorAll('.cal-mode-btn').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-mode')===calMode);});document.getElementById('cal-overlay').classList.add('open');renderCalBody();}
 function closeCal(){document.getElementById('cal-overlay').classList.remove('open');}
 function renderCalBody(){var body=document.getElementById('cal-body');if(calMode==='day')renderDayGrid(body);else if(calMode==='month')renderMonthGrid(body);else if(calMode==='year')renderYearGrid(body);else renderRangeGrid(body);updateCalInfo();}
+
 function renderDayGrid(body){var y=calNavDate.getFullYear(),m=calNavDate.getMonth();var fd=new Date(y,m,1).getDay();fd=(fd+6)%7;var dim=new Date(y,m+1,0).getDate();var today=new Date();today.setHours(0,0,0,0);var html='<div class="cal-nav"><button class="cal-nav-arr" id="cal-prev">‹</button><span class="cal-nav-title">'+MONTHS_RU[m]+' '+y+'</span><button class="cal-nav-arr" id="cal-next">›</button></div><div class="cal-weekdays">'+WD.map(function(d){return'<div class="cal-wd">'+d+'</div>';}).join('')+'</div><div class="cal-days">';var pd=new Date(y,m,0).getDate();for(var i=0;i<fd;i++)html+='<button class="cal-day other-month">'+(pd-fd+1+i)+'</button>';for(var d=1;d<=dim;d++){var dt=new Date(y,m,d);dt.setHours(0,0,0,0);var cls='cal-day';if(dt.getTime()===today.getTime())cls+=' today';if(calSelDate&&dt.getTime()===new Date(calSelDate).setHours(0,0,0,0))cls+=' selected';html+='<button class="'+cls+'" data-date="'+dkey(dt)+'">'+d+'</button>';}var tot=fd+dim,rem=tot%7?7-(tot%7):0;for(var i=1;i<=rem;i++)html+='<button class="cal-day other-month">'+i+'</button>';html+='</div>';body.innerHTML=html;body.querySelector('#cal-prev').addEventListener('click',function(e){e.stopPropagation();calNavDate.setMonth(calNavDate.getMonth()-1);renderCalBody();});body.querySelector('#cal-next').addEventListener('click',function(e){e.stopPropagation();calNavDate.setMonth(calNavDate.getMonth()+1);renderCalBody();});body.querySelectorAll('.cal-day[data-date]').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();calSelDate=new Date(btn.getAttribute('data-date')+'T00:00:00');renderCalBody();});});}
 function renderMonthGrid(body){var y=calNavDate.getFullYear();var html='<div class="cal-nav"><button class="cal-nav-arr" id="cal-prev">‹</button><span class="cal-nav-title">'+y+'</span><button class="cal-nav-arr" id="cal-next">›</button></div><div class="cal-months">';MONTHS_SHORT.forEach(function(mn,i){var sel=(viewMode==='month'&&i===viewDate.getMonth()&&y===viewDate.getFullYear())||(calSelDate&&i===calSelDate.getMonth()&&y===calSelDate.getFullYear());html+='<button class="cal-month-item'+(sel?' selected':'')+'" data-mi="'+i+'">'+mn+'</button>';});html+='</div>';body.innerHTML=html;body.querySelector('#cal-prev').addEventListener('click',function(e){e.stopPropagation();calNavDate.setFullYear(calNavDate.getFullYear()-1);renderCalBody();});body.querySelector('#cal-next').addEventListener('click',function(e){e.stopPropagation();calNavDate.setFullYear(calNavDate.getFullYear()+1);renderCalBody();});body.querySelectorAll('.cal-month-item').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();calSelDate=new Date(calNavDate.getFullYear(),parseInt(btn.getAttribute('data-mi')),1);renderCalBody();});});}
 function renderYearGrid(body){var base=Math.floor(calNavDate.getFullYear()/10)*10;var html='<div class="cal-nav"><button class="cal-nav-arr" id="cal-prev">‹</button><span class="cal-nav-title">'+base+'–'+(base+9)+'</span><button class="cal-nav-arr" id="cal-next">›</button></div><div class="cal-years">';for(var y=base;y<base+12;y++){var sel=(viewMode==='year'&&viewSpecific&&viewSpecific.getFullYear()===y)||(calSelDate&&calSelDate.getFullYear()===y);html+='<button class="cal-year-item'+(sel?' selected':'')+'" data-y="'+y+'">'+y+'</button>';}html+='</div>';body.innerHTML=html;body.querySelector('#cal-prev').addEventListener('click',function(e){e.stopPropagation();calNavDate.setFullYear(calNavDate.getFullYear()-10);renderCalBody();});body.querySelector('#cal-next').addEventListener('click',function(e){e.stopPropagation();calNavDate.setFullYear(calNavDate.getFullYear()+10);renderCalBody();});body.querySelectorAll('.cal-year-item').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();calSelDate=new Date(parseInt(btn.getAttribute('data-y')),0,1);renderCalBody();});});}
 function renderRangeGrid(body){var y=calNavDate.getFullYear(),m=calNavDate.getMonth();var fd=new Date(y,m,1).getDay();fd=(fd+6)%7;var dim=new Date(y,m+1,0).getDate();var today=new Date();today.setHours(0,0,0,0);var f=calRangeFrom?new Date(calRangeFrom):null,t=calRangeTo?new Date(calRangeTo):null;if(f)f.setHours(0,0,0,0);if(t)t.setHours(0,0,0,0);var html='<div class="cal-nav"><button class="cal-nav-arr" id="cal-prev">‹</button><span class="cal-nav-title">'+MONTHS_RU[m]+' '+y+'</span><button class="cal-nav-arr" id="cal-next">›</button></div><div class="cal-weekdays">'+WD.map(function(d){return'<div class="cal-wd">'+d+'</div>';}).join('')+'</div><div class="cal-days">';var pd=new Date(y,m,0).getDate();for(var i=0;i<fd;i++)html+='<button class="cal-day other-month">'+(pd-fd+1+i)+'</button>';for(var d=1;d<=dim;d++){var dt=new Date(y,m,d);dt.setHours(0,0,0,0);var cls='cal-day';if(dt.getTime()===today.getTime())cls+=' today';var isF=f&&dt.getTime()===f.getTime(),isT=t&&dt.getTime()===t.getTime(),inR=f&&t&&dt>f&&dt<t;if(isF&&isT)cls+=' selected';else if(isF)cls+=' range-start';else if(isT)cls+=' range-end';else if(inR)cls+=' in-range';html+='<button class="'+cls+'" data-date="'+dkey(dt)+'">'+d+'</button>';}var tot=fd+dim,rem=tot%7?7-(tot%7):0;for(var i=1;i<=rem;i++)html+='<button class="cal-day other-month">'+i+'</button>';html+='</div>';body.innerHTML=html;body.querySelector('#cal-prev').addEventListener('click',function(e){e.stopPropagation();calNavDate.setMonth(calNavDate.getMonth()-1);renderCalBody();});body.querySelector('#cal-next').addEventListener('click',function(e){e.stopPropagation();calNavDate.setMonth(calNavDate.getMonth()+1);renderCalBody();});body.querySelectorAll('.cal-day[data-date]').forEach(function(btn){btn.addEventListener('click',function(e){e.stopPropagation();var d=new Date(btn.getAttribute('data-date')+'T00:00:00');if(calRangeStep===0){calRangeFrom=d;calRangeTo=null;calRangeStep=1;}else{if(d<calRangeFrom){calRangeTo=new Date(calRangeFrom);calRangeFrom=d;}else calRangeTo=d;calRangeStep=0;}renderCalBody();});});}
+
 function updateCalInfo(){var info=document.getElementById('cal-period-info');if(calMode==='day'&&calSelDate){info.innerHTML='День: <span>'+calSelDate.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})+'</span>';}else if(calMode==='month'&&calSelDate){info.innerHTML='Месяц: <span>'+MONTHS_RU[calSelDate.getMonth()]+' '+calSelDate.getFullYear()+'</span>';}else if(calMode==='year'&&calSelDate){info.innerHTML='Год: <span>'+calSelDate.getFullYear()+'</span>';}else if(calMode==='range'){if(calRangeFrom&&calRangeTo){info.innerHTML='<span>'+calRangeFrom.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+'</span> — <span>'+calRangeTo.toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'})+'</span>';}else if(calRangeFrom){info.innerHTML='Начало: <span>'+calRangeFrom.toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+'</span> → выберите конец';}else{info.textContent='Выберите начало периода';}}else{info.textContent='Выберите дату';}}
+
 function applyCalendar(){if(calMode==='day'&&calSelDate){viewMode='day';viewSpecific=new Date(calSelDate);viewDate.setFullYear(viewSpecific.getFullYear());viewDate.setMonth(viewSpecific.getMonth());}else if(calMode==='month'&&calSelDate){viewMode='month';viewDate=new Date(calSelDate.getFullYear(),calSelDate.getMonth(),1);}else if(calMode==='year'&&calSelDate){viewMode='year';viewSpecific=new Date(calSelDate.getFullYear(),0,1);}else if(calMode==='range'&&calRangeFrom&&calRangeTo){viewMode='range';viewRange={from:new Date(calRangeFrom),to:new Date(calRangeTo)};}else{showToast('Выберите дату или период');return;}closeCal();updateHeaderLabel();render();}
+
+// ── NUMPAD ──
 (function(){var pad=document.getElementById('numpad');function handleNp(e){e.stopPropagation();e.preventDefault();var btn=e.target.closest('.np-btn');if(!btn)return;var v=btn.getAttribute('data-v');if(!v)return;if(v==='ADD'){addTx();return;}if(v==='DEL')numVal=numVal.slice(0,-1);else if(v==='.'){if(!numVal.includes('.'))numVal+=numVal?'.':'0.';}else if(v==='00'){if(numVal&&numVal!=='0')numVal+='00';}else{if(numVal==='0')numVal=v;else numVal+=v;if(numVal.length>10)numVal=numVal.slice(0,-1);}refreshAmt();}pad.addEventListener('touchend',handleNp,{passive:false});pad.addEventListener('click',handleNp);})();
 function refreshAmt(){var el=document.getElementById('amt-display');if(numVal){el.innerHTML=numVal+' <small style="font-size:18px;color:#8e8e93;font-weight:400">₽</small>';el.style.color='';}else el.innerHTML='<span class="placeholder-txt">Введите сумму...</span>';}
+
+// ── НАВИГАЦИЯ ──
 document.getElementById('nav-home').addEventListener('click',function(){switchPage('home');});
 document.getElementById('nav-all').addEventListener('click',function(){switchPage('all');});
 document.getElementById('nav-stats').addEventListener('click',function(){switchPage('stats');});
 function switchPage(name){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});document.getElementById('page-'+name).classList.add('active');document.getElementById('nav-'+name).classList.add('active');}
+
+// ── ТИП ──
 document.getElementById('pill-exp').addEventListener('click',function(e){e.stopPropagation();setType('expense');});
 document.getElementById('pill-inc').addEventListener('click',function(e){e.stopPropagation();setType('income');});
 function setType(t){curType=t;document.getElementById('pill-exp').classList.toggle('active',t==='expense');document.getElementById('pill-inc').classList.toggle('active',t==='income');selCat=cats[t][0]||'';updateTrigger();closeDropdown();}
+
+// ── КАТЕГОРИИ ──
 document.getElementById('cat-trigger').addEventListener('click',function(e){e.stopPropagation();toggleDropdown();});
 document.addEventListener('click',function(e){if(!dropOpen)return;if(!document.getElementById('cat-wrap').contains(e.target))closeDropdown();});
 function toggleDropdown(){dropOpen=!dropOpen;document.getElementById('cat-dropdown').classList.toggle('open',dropOpen);document.getElementById('cat-trigger').classList.toggle('open',dropOpen);document.getElementById('cat-arrow').style.transform=dropOpen?'rotate(180deg)':'';if(dropOpen){pendingCatDel=null;renderCatList();}}
@@ -367,28 +394,105 @@ function catDelClick(c){if(pendingCatDel===c){cats[curType]=cats[curType].filter
 function pickCat(c){selCat=c;updateTrigger();closeDropdown();}
 function updateTrigger(){document.getElementById('cat-trigger-icon').textContent=selCat?catIcon(selCat):'📌';document.getElementById('cat-trigger-label').textContent=selCat||'Выберите категорию';}
 document.getElementById('btn-add-cat').addEventListener('click',function(e){e.stopPropagation();var inp=document.getElementById('cat-new-inp'),val=inp.value.trim();if(!val)return;var full=val.includes(' ')?val:'📌 '+val;if(!cats[curType].includes(full)){cats[curType].push(full);saveCats();}inp.value='';pickCat(full);renderCatList();});
+
+// ── САЙДБАР ──
 document.getElementById('btn-burger').addEventListener('click',function(e){e.stopPropagation();openSidebar();});
 document.getElementById('sidebar-overlay').addEventListener('click',closeSidebar);
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebar-overlay').classList.add('open');}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('open');}
+
+// ── ЭКСПОРТ — отправка через Telegram Bot ──
 document.getElementById('btn-export').addEventListener('click',function(){closeSidebar();openExportModal();});
 document.getElementById('btn-modal-cancel').addEventListener('click',closeExportModal);
 document.getElementById('btn-modal-export').addEventListener('click',doExport);
-document.querySelectorAll('.period-opt').forEach(function(el){el.addEventListener('click',function(){selPeriod=el.getAttribute('data-period');document.querySelectorAll('.period-opt').forEach(function(o){o.classList.remove('selected');});el.classList.add('selected');document.getElementById('period-custom').classList.toggle('visible',selPeriod==='custom');});});
-function openExportModal(){var now=new Date(),prev=new Date(now.getFullYear(),now.getMonth()-1,1);document.getElementById('lbl-cur-month').textContent=MONTHS_RU[now.getMonth()]+' '+now.getFullYear();document.getElementById('lbl-last-month').textContent=MONTHS_RU[prev.getMonth()]+' '+prev.getFullYear();document.getElementById('lbl-cur-year').textContent=now.getFullYear()+' год';document.getElementById('lbl-all').textContent=txs.length?txs.length+' операций':'Нет данных';document.getElementById('export-from').value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0];document.getElementById('export-to').value=now.toISOString().split('T')[0];selPeriod='cur-month';document.querySelectorAll('.period-opt').forEach(function(o){o.classList.toggle('selected',o.getAttribute('data-period')==='cur-month');});document.getElementById('period-custom').classList.remove('visible');document.getElementById('export-modal').classList.add('open');}
+document.querySelectorAll('.period-opt').forEach(function(el){el.addEventListener('click',function(){selPeriod=el.getAttribute('data-period');document.querySelectorAll('.period-opt').forEach(function(o){o.classList.remove('selected');});el.classList.add('selected');});});
+
+function openExportModal(){
+  var now=new Date(),prev=new Date(now.getFullYear(),now.getMonth()-1,1);
+  document.getElementById('lbl-cur-month').textContent=MONTHS_RU[now.getMonth()]+' '+now.getFullYear();
+  document.getElementById('lbl-last-month').textContent=MONTHS_RU[prev.getMonth()]+' '+prev.getFullYear();
+  document.getElementById('lbl-cur-year').textContent=now.getFullYear()+' год';
+  document.getElementById('lbl-all').textContent=txs.length?txs.length+' операций':'Нет данных';
+  selPeriod='cur-month';
+  document.querySelectorAll('.period-opt').forEach(function(o){o.classList.toggle('selected',o.getAttribute('data-period')==='cur-month');});
+  document.getElementById('export-modal').classList.add('open');
+}
 function closeExportModal(){document.getElementById('export-modal').classList.remove('open');}
-function getExportTxs(){var now=new Date(),from,to;if(selPeriod==='cur-month'){from=new Date(now.getFullYear(),now.getMonth(),1);to=new Date(now.getFullYear(),now.getMonth()+1,0);}else if(selPeriod==='last-month'){from=new Date(now.getFullYear(),now.getMonth()-1,1);to=new Date(now.getFullYear(),now.getMonth(),0);}else if(selPeriod==='cur-year'){from=new Date(now.getFullYear(),0,1);to=new Date(now.getFullYear(),11,31);}else if(selPeriod==='all'){return txs.slice().sort(function(a,b){return new Date(a.date)-new Date(b.date);});}else if(selPeriod==='custom'){from=new Date(document.getElementById('export-from').value);to=new Date(document.getElementById('export-to').value);}return txs.filter(function(t){var d=new Date(t.date);return d>=from&&d<=to;}).sort(function(a,b){return new Date(a.date)-new Date(b.date);});}
-function doExport(){var data=getExportTxs();if(!data.length){showToast('Нет данных за выбранный период');return;}var rows=[['Дата','Тип','Категория','Описание','Сумма (₽)']];var ti=0,te=0;data.forEach(function(t){rows.push([new Date(t.date).toLocaleDateString('ru-RU'),t.type==='income'?'Доход':'Расход',t.category,t.description||'',t.type==='income'?t.amount:-t.amount]);if(t.type==='income')ti+=t.amount;else te+=t.amount;});rows.push([],[],['',' ','','Итого доходы:',ti],['',' ','','Итого расходы:',-te],['',' ','','Баланс:',ti-te]);var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:12},{wch:10},{wch:20},{wch:24},{wch:14}];var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Финансы');var names={'cur-month':'текущий_месяц','last-month':'прошлый_месяц','cur-year':'год','all':'все_данные','custom':'период'};XLSX.writeFile(wb,'финансы_'+names[selPeriod]+'.xlsx');closeExportModal();showToast('Excel-файл скачан ✓');}
-function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
+
+function getExportTxs(){
+  var now=new Date(),from,to;
+  if(selPeriod==='cur-month'){from=new Date(now.getFullYear(),now.getMonth(),1);to=new Date(now.getFullYear(),now.getMonth()+1,0);}
+  else if(selPeriod==='last-month'){from=new Date(now.getFullYear(),now.getMonth()-1,1);to=new Date(now.getFullYear(),now.getMonth(),0);}
+  else if(selPeriod==='cur-year'){from=new Date(now.getFullYear(),0,1);to=new Date(now.getFullYear(),11,31);}
+  else{return txs.slice().sort(function(a,b){return new Date(a.date)-new Date(b.date);});}
+  return txs.filter(function(t){var d=new Date(t.date);return d>=from&&d<=to;}).sort(function(a,b){return new Date(a.date)-new Date(b.date);});
+}
+
+function getPeriodLabel(){
+  var now=new Date();
+  if(selPeriod==='cur-month') return MONTHS_RU[now.getMonth()]+'_'+now.getFullYear();
+  if(selPeriod==='last-month'){var p=new Date(now.getFullYear(),now.getMonth()-1,1);return MONTHS_RU[p.getMonth()]+'_'+p.getFullYear();}
+  if(selPeriod==='cur-year') return 'год_'+now.getFullYear();
+  return 'все_данные';
+}
+
+function doExport(){
+  var data=getExportTxs();
+  if(!data.length){showToast('Нет данных за выбранный период');return;}
+
+  var btn=document.getElementById('btn-modal-export');
+  btn.textContent='⏳ Отправляем...';
+  btn.disabled=true;
+
+  // Получаем chat_id из Telegram WebApp если доступен
+  var chatId = CHAT_ID;
+  if(tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id){
+    chatId = String(tg.initDataUnsafe.user.id);
+  }
+
+  fetch(WORKER_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      botToken: BOT_TOKEN,
+      chatId: chatId,
+      data: data,
+      period: getPeriodLabel()
+    })
+  })
+  .then(function(r){return r.json();})
+  .then(function(res){
+    btn.textContent='📤 Отправить в Telegram';
+    btn.disabled=false;
+    if(res.ok){
+      closeExportModal();
+      showToast('✅ Отчёт отправлен в Telegram!');
+    } else {
+      showToast('Ошибка: '+(res.description||'попробуйте снова'));
+    }
+  })
+  .catch(function(){
+    btn.textContent='📤 Отправить в Telegram';
+    btn.disabled=false;
+    showToast('Ошибка соединения');
+  });
+}
+
+function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},3000);}
+
+// ── ТРАНЗАКЦИИ ──
 function addTx(){var amt=parseFloat(numVal);if(!amt||amt<=0){var el=document.getElementById('amt-display');el.style.color='#ff3b30';setTimeout(function(){el.style.color='';},600);return;}if(!selCat)return;txs.unshift({id:Date.now().toString(),type:curType,amount:amt,category:selCat,description:document.getElementById('desc-inp').value.trim(),date:new Date().toISOString().split('T')[0]});saveTxs();numVal='';document.getElementById('amt-display').innerHTML='<span class="placeholder-txt">Введите сумму...</span>';document.getElementById('desc-inp').value='';render();}
 function toggleEdit(id){openEdit=openEdit===id?null:id;pendingDelete=null;renderLists();}
 function saveEdit(id){var t=txs.find(function(x){return x.id===id;});if(!t)return;t.amount=parseFloat(document.getElementById('ea-'+id).value)||0;t.category=document.getElementById('ec-'+id).value;t.description=document.getElementById('ed-'+id).value;t.date=document.getElementById('edt-'+id).value;openEdit=null;pendingDelete=null;saveTxs();render();}
 function delTx(id){if(pendingDelete===id){txs=txs.filter(function(x){return x.id!==id;});openEdit=null;pendingDelete=null;saveTxs();render();}else{pendingDelete=id;var btn=document.getElementById('delbtn-'+id);if(btn){btn.textContent='Подтвердить';btn.classList.add('confirm');}setTimeout(function(){if(pendingDelete===id){pendingDelete=null;if(btn){btn.textContent='Удалить';btn.classList.remove('confirm');}}},3000);}}
 function txBlock(t){var isInc=t.type==='income',isOpen=openEdit===t.id;var opts=cats[t.type].map(function(c){return'<option value="'+c+'"'+(c===t.category?' selected':'')+'>'+c+'</option>';}).join('');return'<div><div class="tx-item" onclick="toggleEdit(\''+t.id+'\')"><div class="tx-icon" style="background:'+(isInc?'#e3f9e8':'#fff5f5')+'">'+catIcon(t.category)+'</div><div class="tx-info"><div class="tx-name">'+(t.description||t.category)+'</div><div class="tx-meta">'+t.category+' · '+new Date(t.date).toLocaleDateString('ru-RU',{day:'numeric',month:'short'})+'</div></div><span class="tx-amt '+t.type+'">'+(isInc?'+':'-')+fmt(t.amount)+'</span></div><div class="edit-panel'+(isOpen?' visible':'')+'"><div class="ep-row"><input class="ep-inp" id="ea-'+t.id+'" type="number" value="'+t.amount+'" onclick="event.stopPropagation()"><select class="ep-inp" id="ec-'+t.id+'" onclick="event.stopPropagation()">'+opts+'</select></div><div class="ep-row"><input class="ep-inp" id="ed-'+t.id+'" type="text" value="'+(t.description||'')+'" placeholder="Описание" onclick="event.stopPropagation()"><input class="ep-inp" id="edt-'+t.id+'" type="date" value="'+t.date+'" onclick="event.stopPropagation()"></div><button class="ep-save" onclick="event.stopPropagation();saveEdit(\''+t.id+'\')">Сохранить</button><button class="ep-save ep-del" id="delbtn-'+t.id+'" onclick="event.stopPropagation();delTx(\''+t.id+'\')">Удалить</button></div></div>';}
+
+// ── РЕНДЕР ──
 function renderLists(){var mtxs=getFilteredTxs().sort(function(a,b){return new Date(b.date)-new Date(a.date);});document.getElementById('tx-list-home').innerHTML=mtxs.length?mtxs.slice(0,6).map(txBlock).join(''):'<div class="empty">Нет операций</div>';document.getElementById('all-wrap').innerHTML=mtxs.length?'<div class="sec-title">Операции</div>'+mtxs.map(txBlock).join(''):'<div class="empty">Нет операций</div>';}
 function renderHeader(){var mtxs=getFilteredTxs();var inc=mtxs.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);var exp=mtxs.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);document.getElementById('h-inc').textContent=fmt(inc);document.getElementById('h-exp').textContent=fmt(exp);var b=inc-exp,el=document.getElementById('h-bal');el.textContent=fmt(b);el.style.color=b>=0?'#34c759':'#ff3b30';updateHeaderLabel();}
 function renderStats(){var mtxs=getFilteredTxs();var inc=mtxs.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);var exp=mtxs.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);var exps=mtxs.filter(function(t){return t.type==='expense';});var avg=exps.length?Math.round(exp/exps.length):0;document.getElementById('stat-grid').innerHTML='<div class="stat-card"><div class="stat-lbl">Доходы</div><div class="stat-val" style="color:#34c759">'+fmt(inc)+'</div></div><div class="stat-card"><div class="stat-lbl">Расходы</div><div class="stat-val" style="color:#ff3b30">'+fmt(exp)+'</div></div><div class="stat-card"><div class="stat-lbl">Операций</div><div class="stat-val">'+mtxs.length+'</div></div><div class="stat-card"><div class="stat-lbl">Средний расход</div><div class="stat-val">'+fmt(avg)+'</div></div>';var catMap={};exps.forEach(function(t){catMap[t.category]=(catMap[t.category]||0)+t.amount;});var sorted=Object.entries(catMap).sort(function(a,b){return b[1]-a[1];});var sc=document.getElementById('stat-chart');if(!sorted.length){sc.innerHTML='<div class="empty">Нет расходов</div>';return;}var max=sorted[0][1];sc.innerHTML=sorted.map(function(e,i){return'<div class="bar-row"><span class="bar-cat">'+e[0]+'</span><div class="bar-bg"><div class="bar-fill" style="width:'+Math.round(e[1]/max*100)+'%;background:'+CLRS[i%CLRS.length]+'"></div></div><span class="bar-amt">'+fmt(e[1])+'</span></div>';}).join('');}
 function render(){renderHeader();renderLists();renderStats();}
+
 selCat=cats[curType][0]||'';updateTrigger();render();
 </script>
 </body>
