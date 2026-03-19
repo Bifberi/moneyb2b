@@ -392,8 +392,8 @@ function renderCatList(){document.getElementById('cat-list').innerHTML=cats[curT
 document.getElementById('cat-list').addEventListener('click',function(e){e.stopPropagation();var del=e.target.closest('.cat-del-btn');if(del){catDelClick(del.getAttribute('data-del'));return;}var opt=e.target.closest('.cat-opt');if(opt)pickCat(opt.getAttribute('data-cat'));});
 function catDelClick(c){if(pendingCatDel===c){cats[curType]=cats[curType].filter(function(x){return x!==c;});saveCats();if(selCat===c){selCat=cats[curType][0]||'';updateTrigger();}pendingCatDel=null;if(!cats[curType].length)closeDropdown();else renderCatList();}else{pendingCatDel=c;renderCatList();setTimeout(function(){if(pendingCatDel===c){pendingCatDel=null;renderCatList();}},3000);}}
 function pickCat(c){selCat=c;updateTrigger();closeDropdown();}
-function updateTrigger(){document.getElementById('cat-trigger-icon').textContent=selCat?catIcon(selCat):'📌';document.getElementById('cat-trigger-label').textContent=selCat||'Выберите категорию';}
-document.getElementById('btn-add-cat').addEventListener('click',function(e){e.stopPropagation();var inp=document.getElementById('cat-new-inp'),val=inp.value.trim();if(!val)return;var full=val.includes(' ')?val:'📌 '+val;if(!cats[curType].includes(full)){cats[curType].push(full);saveCats();}inp.value='';pickCat(full);renderCatList();});
+function updateTrigger(){document.getElementById('cat-trigger-icon').textContent='';document.getElementById('cat-trigger-label').textContent=selCat||'Выберите категорию';}
+document.getElementById('btn-add-cat').addEventListener('click',function(e){e.stopPropagation();var inp=document.getElementById('cat-new-inp'),val=inp.value.trim();if(!val)return;var emojiRe=/^\p{Emoji}/u;var full=emojiRe.test(val)?val:'📌 '+val;if(!cats[curType].includes(full)){cats[curType].push(full);saveCats();}inp.value='';pickCat(full);renderCatList();});
 
 // ── САЙДБАР ──
 document.getElementById('btn-burger').addEventListener('click',function(e){e.stopPropagation();openSidebar();});
